@@ -60,6 +60,8 @@ export interface DouyinServiceOptions {
   downloadDir?: string;
   /** 临时文件目录，默认: ./temp */
   tempDir?: string;
+  /** 自定义 Cookie 字符串，用于绕过反爬机制 */
+  customCookies?: string;
 }
 
 /**

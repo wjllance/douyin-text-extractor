@@ -12,6 +12,9 @@ import {
 import { FileUtils } from "../utils/fileUtils";
 import logger from "../utils/logger";
 
+const RETRY_DELAY_MIN = 10000;
+const RETRY_DELAY_MAX = 60000;
+
 export class DouyinService {
   private readonly userAgent =
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/121.0.2277.107 Version/17.0 Mobile/15E148 Safari/604.1";
@@ -21,6 +24,7 @@ export class DouyinService {
   private readonly autoCleanTempFiles: boolean;
   private readonly downloadDir: string;
   private readonly tempDir: string;
+  private readonly customCookies?: string;
 
   /**
    * 创建 DouyinService 实例
@@ -41,8 +45,16 @@ export class DouyinService {
    *   downloadDir: "./custom-downloads",
    *   tempDir: "./custom-temp"
    * });
+   * 
+   * // 使用自定义 Cookie 绕过反爬机制
+   * const service = new DouyinService({
+   *   speechApiKey: "your-api-key",
+   *   customCookies: "ttwid=1%7Cxxxxxxxxxxxxxxxxxxxxxx; __ac_nonce=xxxxxxxx"
+   * });
    * ```
    */
+
+
   constructor(options: DouyinServiceOptions) {
     // 设置默认值
     const {
@@ -52,6 +64,7 @@ export class DouyinService {
       autoCleanTempFiles = true,
       downloadDir = path.join(process.cwd(), "downloads"),
       tempDir = path.join(process.cwd(), "temp"),
+      customCookies,
     } = options;
 
     if (!speechApiKey) {
@@ -64,6 +77,7 @@ export class DouyinService {
     this.autoCleanTempFiles = autoCleanTempFiles;
     this.downloadDir = downloadDir;
     this.tempDir = tempDir;
+    this.customCookies = customCookies;
 
     logger.info("DouyinService initialized", {
       speechApiBaseUrl: this.speechApiBaseUrl,
@@ -72,6 +86,7 @@ export class DouyinService {
       autoCleanTempFiles: this.autoCleanTempFiles,
       downloadDir: this.downloadDir,
       tempDir: this.tempDir,
+      hasCustomCookies: !!this.customCookies,
     });
   }
 
@@ -135,6 +150,36 @@ export class DouyinService {
   }
 
   /**
+   * 创建 DouyinService 实例（带自定义 Cookie）
+   * @param speechApiKey 语音识别 API 密钥
+   * @param customCookies 自定义 Cookie 字符串
+   * @param options 可选：其他配置选项
+   * @returns DouyinService 实例
+   * @example
+   * ```typescript
+   * const cookieString = "ttwid=1%7Cxxxxxxxxxxxxxxxxxxxxxx; __ac_nonce=xxxxxxxx";
+   * const service = DouyinService.createWithCookies("your-api-key", cookieString);
+   * 
+   * // 或者带其他配置
+   * const service = DouyinService.createWithCookies("your-api-key", cookieString, {
+   *   speechModel: "custom-model",
+   *   autoCleanTempFiles: false
+   * });
+   * ```
+   */
+  static createWithCookies(
+    speechApiKey: string,
+    customCookies: string,
+    options?: Partial<Omit<DouyinServiceOptions, 'speechApiKey' | 'customCookies'>>
+  ): DouyinService {
+    return new DouyinService({
+      speechApiKey,
+      customCookies,
+      ...options,
+    });
+  }
+
+  /**
    * @deprecated 建议直接使用构造函数或其他工厂方法
    * 向后兼容的方法，现在直接从环境变量读取配置
    */
@@ -183,8 +228,23 @@ export class DouyinService {
 
         // 获取重定向后的真实URL
         logger.debug("获取重定向后的真实URL", { shareUrl });
+        
+        // 准备请求头
+        const shareHeaders: Record<string, string> = {
+          "User-Agent": this.userAgent
+        };
+        
+        // 如果有自定义 cookie，添加到请求头中
+        if (this.customCookies) {
+          shareHeaders["Cookie"] = this.customCookies;
+          logger.debug("使用自定义 Cookie", { 
+            hasCookie: true, 
+            cookieLength: this.customCookies.length 
+          });
+        }
+        
         const shareResponse = await axios.get(shareUrl, {
-          headers: { "User-Agent": this.userAgent },
+          headers: shareHeaders,
           maxRedirects: 5,
           timeout: 10000, // 10秒超时
         });
@@ -218,17 +278,31 @@ export class DouyinService {
 
         // 获取视频页面内容
         logger.debug("获取视频页面内容", { pageUrl, attempt });
+        
+        // 准备页面请求头
+        const pageHeaders: Record<string, string> = {
+          "User-Agent": this.userAgent,
+          // 尝试添加更多常见的浏览器请求头
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+          "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+          "Accept-Encoding": "gzip, deflate, br",
+          "DNT": "1",
+          "Connection": "keep-alive",
+          "Upgrade-Insecure-Requests": "1"
+        };
+        
+        // 如果有自定义 cookie，添加到请求头中
+        if (this.customCookies) {
+          pageHeaders["Cookie"] = this.customCookies;
+          logger.debug("页面请求使用自定义 Cookie", { 
+            hasCookie: true, 
+            cookieLength: this.customCookies.length,
+            attempt 
+          });
+        }
+        
         const pageResponse = await axios.get(pageUrl, {
-          headers: { 
-            "User-Agent": this.userAgent,
-            // 尝试添加更多常见的浏览器请求头
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
-            "DNT": "1",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1"
-          },
+          headers: pageHeaders,
           timeout: 15000, // 15秒超时
         });
 
@@ -280,7 +354,7 @@ export class DouyinService {
           
           // 如果检测到需要验证且还有重试次数，则等待后重试
           if (attempt < maxRetries) {
-            const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // 指数退避，最大5秒
+            const retryDelay = Math.min(10000 * Math.pow(2, attempt - 1), 60000); // 指数退避，最大5秒
             logger.info(`等待 ${retryDelay}ms 后重试`, { attempt, retryDelay });
             await new Promise(resolve => setTimeout(resolve, retryDelay));
             continue;
@@ -320,7 +394,7 @@ export class DouyinService {
           
           // 如果还有重试次数，继续重试
           if (attempt < maxRetries) {
-            const retryDelay = Math.min(2000 * Math.pow(2, attempt - 1), 10000); // 指数退避，最大10秒
+            const retryDelay = Math.min(RETRY_DELAY_MIN * Math.pow(2, attempt - 1), RETRY_DELAY_MAX); // 指数退避，最大30秒
             logger.info(`解析失败，等待 ${retryDelay}ms 后重试`, { attempt, retryDelay });
             await new Promise(resolve => setTimeout(resolve, retryDelay));
             lastError = new Error("从HTML中解析视频信息失败");

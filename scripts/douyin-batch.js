@@ -81,7 +81,9 @@ class DouyinBatchProcessor {
         return DouyinService.createWithDefaultConfig("dummy-key");
       }
 
-      return DouyinService.createWithDefaultConfig(speechApiKey);
+      return DouyinService.createWithDefaultConfig(speechApiKey, {
+        customCookies: process.env.CUSTOM_COOKIES || "",
+      });
     } catch (error) {
       if (error.code === "MODULE_NOT_FOUND") {
         throw new Error("项目未编译，请先运行: npm run build");
