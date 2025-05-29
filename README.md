@@ -147,6 +147,12 @@ docker-compose up -d
 
 欢迎在 [Issues](https://github.com/your-repo/douyin-text-extractor/issues) 中讨论和建议！
 
+## 🙏 致谢
+
+感谢以下项目提供的灵感和参考：
+
+- [douyin-mcp-server](https://github.com/yzfly/douyin-mcp-server) - 基于 Model Context Protocol (MCP) 的抖音视频文本提取服务器，为本项目的开发提供了宝贵的思路和参考
+
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
