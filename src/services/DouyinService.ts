@@ -158,9 +158,9 @@ export class DouyinService {
   /**
    * 从分享链接解析抖音视频信息
    */
-  async parseShareUrl(shareText: string): Promise<DouyinVideoInfo> {
+  async parseShareUrl(shareText: string, maxRetries: number = 3): Promise<DouyinVideoInfo> {
     const startTime = Date.now();
-    logger.info("开始解析抖音分享链接", { shareText });
+    logger.info("开始解析抖音分享链接", { shareText, maxRetries });
 
     // 提取分享链接
     const urlRegex =
@@ -175,112 +175,290 @@ export class DouyinService {
     const shareUrl = urls[0];
     logger.info("提取到分享链接", { shareUrl });
 
-    try {
-      // 获取重定向后的真实URL
-      logger.debug("获取重定向后的真实URL", { shareUrl });
-      const shareResponse = await axios.get(shareUrl, {
-        headers: { "User-Agent": this.userAgent },
-        maxRedirects: 5,
-      });
+    let lastError: Error | null = null;
 
-      const videoId = shareResponse.request.res.responseUrl
-        .split("?")[0]
-        .trim()
-        .split("/")
-        .pop();
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        logger.debug(`尝试解析 (${attempt}/${maxRetries})`, { shareUrl, attempt, maxRetries });
 
-      logger.info("提取到视频ID", {
-        videoId,
-        finalUrl: shareResponse.request.res.responseUrl,
-      });
-
-      const pageUrl = `https://www.iesdouyin.com/share/video/${videoId}`;
-
-      // 获取视频页面内容
-      logger.debug("获取视频页面内容", { pageUrl });
-      const pageResponse = await axios.get(pageUrl, {
-        headers: { "User-Agent": this.userAgent },
-      });
-
-      logger.debug("页面内容获取成功", {
-        contentLength: pageResponse.data.length,
-        status: pageResponse.status,
-      });
-
-      // 解析页面中的JSON数据
-      const pattern = /window\._ROUTER_DATA\s*=\s*(.*?)<\/script>/s;
-      const match = pageResponse.data.match(pattern);
-
-      if (!match || !match[1]) {
-        logger.error("从HTML中解析视频信息失败", {
-          videoId,
-          hasMatch: !!match,
-          matchLength: match?.[1]?.length,
+        // 获取重定向后的真实URL
+        logger.debug("获取重定向后的真实URL", { shareUrl });
+        const shareResponse = await axios.get(shareUrl, {
+          headers: { "User-Agent": this.userAgent },
+          maxRedirects: 5,
+          timeout: 10000, // 10秒超时
         });
-        throw new Error("从HTML中解析视频信息失败");
-      }
 
-      logger.debug("成功匹配JSON数据", { jsonLength: match[1].length });
+        // 添加更详细的重定向分析
+        logger.debug("重定向响应详情", {
+          status: shareResponse.status,
+          statusText: shareResponse.statusText,
+          finalUrl: shareResponse.request.res.responseUrl,
+          redirectCount: shareResponse.request._redirects?.length || 0,
+          cookies: shareResponse.headers['set-cookie'] || [],
+          responseHeaders: {
+            contentType: shareResponse.headers['content-type'],
+            server: shareResponse.headers['server'],
+            location: shareResponse.headers['location']
+          }
+        });
 
-      const jsonData = JSON.parse(match[1].trim());
-      const VIDEO_ID_PAGE_KEY = "video_(id)/page";
-      const NOTE_ID_PAGE_KEY = "note_(id)/page";
+        const videoId = shareResponse.request.res.responseUrl
+          .split("?")[0]
+          .trim()
+          .split("/")
+          .pop();
 
-      let originalVideoInfo;
-      if (jsonData.loaderData[VIDEO_ID_PAGE_KEY]) {
-        originalVideoInfo = jsonData.loaderData[VIDEO_ID_PAGE_KEY].videoInfoRes;
-        logger.debug("使用视频页面数据", { pageKey: VIDEO_ID_PAGE_KEY });
-      } else if (jsonData.loaderData[NOTE_ID_PAGE_KEY]) {
-        originalVideoInfo = jsonData.loaderData[NOTE_ID_PAGE_KEY].videoInfoRes;
-        logger.debug("使用笔记页面数据", { pageKey: NOTE_ID_PAGE_KEY });
-      } else {
-        const availableKeys = Object.keys(jsonData.loaderData || {});
-        logger.error("无法从JSON中解析视频或图集信息", {
+        logger.info("提取到视频ID", {
           videoId,
-          availableKeys,
+          finalUrl: shareResponse.request.res.responseUrl,
+        });
+
+        const pageUrl = `https://www.iesdouyin.com/share/video/${videoId}`;
+
+        // 获取视频页面内容
+        logger.debug("获取视频页面内容", { pageUrl, attempt });
+        const pageResponse = await axios.get(pageUrl, {
+          headers: { 
+            "User-Agent": this.userAgent,
+            // 尝试添加更多常见的浏览器请求头
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "DNT": "1",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1"
+          },
+          timeout: 15000, // 15秒超时
+        });
+
+        // 添加详细的页面响应分析
+        logger.debug("页面响应详情", {
+          status: pageResponse.status,
+          statusText: pageResponse.statusText,
+          contentLength: pageResponse.data.length,
+          contentType: pageResponse.headers['content-type'],
+          server: pageResponse.headers['server'],
+          cookies: pageResponse.headers['set-cookie'] || [],
+          responseHeaders: Object.keys(pageResponse.headers),
+          hasSetCookie: !!pageResponse.headers['set-cookie'],
+          finalUrl: pageResponse.request.res?.responseUrl || pageUrl,
+          attempt
+        });
+
+        // 分析HTML内容
+        const htmlContent = pageResponse.data;
+        const htmlPreview = htmlContent.substring(0, 500);
+        
+        logger.debug("HTML内容分析", {
+          htmlLength: htmlContent.length,
+          htmlPreview: htmlPreview,
+          containsRouterData: htmlContent.includes('window._ROUTER_DATA'),
+          containsVideoInfo: htmlContent.includes('videoInfoRes'),
+          containsItemList: htmlContent.includes('item_list'),
+          containsScript: htmlContent.includes('<script>'),
+          containsDouyin: htmlContent.includes('douyin'),
+          containsTitle: htmlContent.includes('<title>'),
+          titleMatch: htmlContent.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || 'No title found',
+          attempt
+        });
+
+        // 检查是否被重定向到登录页面或其他页面
+        const needsAuth = htmlContent.includes('登录') || htmlContent.includes('login') || 
+                         htmlContent.includes('验证') || htmlContent.includes('captcha');
+        
+        if (needsAuth) {
+          logger.warn("页面可能要求登录或验证", {
+            videoId,
+            pageUrl,
+            containsLogin: htmlContent.includes('登录'),
+            containsCaptcha: htmlContent.includes('captcha'),
+            containsVerify: htmlContent.includes('验证'),
+            attempt,
+            willRetry: attempt < maxRetries
+          });
+          
+          // 如果检测到需要验证且还有重试次数，则等待后重试
+          if (attempt < maxRetries) {
+            const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // 指数退避，最大5秒
+            logger.info(`等待 ${retryDelay}ms 后重试`, { attempt, retryDelay });
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
+        }
+
+        // 解析页面中的JSON数据
+        const pattern = /window\._ROUTER_DATA\s*=\s*(.*?)<\/script>/s;
+        const match = pageResponse.data.match(pattern);
+
+        if (!match || !match[1]) {
+          // 添加更多调试信息
+          const errorInfo = {
+            videoId,
+            pageUrl,
+            hasMatch: !!match,
+            matchLength: match?.[1]?.length,
+            htmlLength: htmlContent.length,
+            attempt,
+            needsAuth,
+            possiblePatterns: {
+              hasWindowObject: htmlContent.includes('window.'),
+              hasRouterData: htmlContent.includes('_ROUTER_DATA'),
+              hasVideoData: htmlContent.includes('videoData'),
+              hasInitialProps: htmlContent.includes('__INITIAL_PROPS__'),
+              hasNextData: htmlContent.includes('__NEXT_DATA__')
+            },
+            // 尝试查找其他可能的数据模式
+            alternativePatterns: [
+              htmlContent.match(/window\.__INITIAL_STATE__\s*=\s*.*?<\/script>/s) ? 'INITIAL_STATE found' : null,
+              htmlContent.match(/window\.__NUXT__\s*=\s*.*?<\/script>/s) ? 'NUXT found' : null,
+              htmlContent.match(/"videoInfoRes":\s*{/s) ? 'videoInfoRes in plain text' : null
+            ].filter(Boolean)
+          };
+          
+          logger.error("从HTML中解析视频信息失败", errorInfo);
+          
+          // 如果还有重试次数，继续重试
+          if (attempt < maxRetries) {
+            const retryDelay = Math.min(2000 * Math.pow(2, attempt - 1), 10000); // 指数退避，最大10秒
+            logger.info(`解析失败，等待 ${retryDelay}ms 后重试`, { attempt, retryDelay });
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            lastError = new Error("从HTML中解析视频信息失败");
+            continue;
+          }
+          
+          // 如果找不到ROUTER_DATA，尝试搜索其他可能的数据源
+          const alternativePatterns = [
+            /window\.__INITIAL_STATE__\s*=\s*(.*?)<\/script>/s,
+            /window\.__NUXT__\s*=\s*(.*?)<\/script>/s,
+            /"videoInfoRes":\s*({.*?})/s
+          ];
+          
+          for (const altPattern of alternativePatterns) {
+            const altMatch = htmlContent.match(altPattern);
+            if (altMatch) {
+              logger.info("找到替代数据模式", {
+                pattern: altPattern.toString(),
+                matchLength: altMatch[1]?.length,
+                attempt
+              });
+            }
+          }
+          
+          throw new Error("从HTML中解析视频信息失败");
+        }
+
+        logger.debug("成功匹配JSON数据", { 
+          jsonLength: match[1].length,
+          jsonPreview: match[1].substring(0, 200) + (match[1].length > 200 ? '...' : ''),
+          attempt
+        });
+
+        const jsonData = JSON.parse(match[1].trim());
+        const VIDEO_ID_PAGE_KEY = "video_(id)/page";
+        const NOTE_ID_PAGE_KEY = "note_(id)/page";
+
+        // 添加JSON数据结构分析
+        logger.debug("JSON数据结构分析", {
           hasLoaderData: !!jsonData.loaderData,
+          loaderDataKeys: Object.keys(jsonData.loaderData || {}),
+          expectedVideoKey: VIDEO_ID_PAGE_KEY,
+          expectedNoteKey: NOTE_ID_PAGE_KEY,
+          hasVideoKey: !!jsonData.loaderData?.[VIDEO_ID_PAGE_KEY],
+          hasNoteKey: !!jsonData.loaderData?.[NOTE_ID_PAGE_KEY],
+          attempt
         });
-        throw new Error("无法从JSON中解析视频或图集信息");
+
+        let originalVideoInfo;
+        if (jsonData.loaderData[VIDEO_ID_PAGE_KEY]) {
+          originalVideoInfo = jsonData.loaderData[VIDEO_ID_PAGE_KEY].videoInfoRes;
+          logger.debug("使用视频页面数据", { pageKey: VIDEO_ID_PAGE_KEY, attempt });
+        } else if (jsonData.loaderData[NOTE_ID_PAGE_KEY]) {
+          originalVideoInfo = jsonData.loaderData[NOTE_ID_PAGE_KEY].videoInfoRes;
+          logger.debug("使用笔记页面数据", { pageKey: NOTE_ID_PAGE_KEY, attempt });
+        } else {
+          const availableKeys = Object.keys(jsonData.loaderData || {});
+          logger.error("无法从JSON中解析视频或图集信息", {
+            videoId,
+            availableKeys,
+            hasLoaderData: !!jsonData.loaderData,
+            jsonDataKeys: Object.keys(jsonData),
+            loaderDataStructure: jsonData.loaderData ? Object.keys(jsonData.loaderData).map(key => ({
+              key,
+              hasVideoInfoRes: !!jsonData.loaderData[key]?.videoInfoRes,
+              hasItemList: !!jsonData.loaderData[key]?.videoInfoRes?.item_list
+            })) : [],
+            attempt
+          });
+          throw new Error("无法从JSON中解析视频或图集信息");
+        }
+
+        const data = originalVideoInfo.item_list[0];
+
+        // 获取无水印视频URL
+        const videoUrl = data.video.play_addr.url_list[0].replace(
+          "playwm",
+          "play"
+        );
+        const desc = data.desc?.trim() || `douyin_${videoId}`;
+        const title = FileUtils.sanitizeFilename(desc);
+
+        const result = {
+          videoId,
+          title,
+          downloadUrl: videoUrl,
+          desc,
+        };
+
+        const processingTime = Date.now() - startTime;
+        logger.info("视频信息解析完成", {
+          ...result,
+          processingTime: `${processingTime}ms`,
+          attempts: attempt,
+          successful: true
+        });
+
+        return result;
+        
+      } catch (error) {
+        lastError = error as Error;
+        const processingTime = Date.now() - startTime;
+        
+        logger.warn(`解析尝试 ${attempt}/${maxRetries} 失败`, {
+          shareUrl,
+          error: error instanceof Error ? error.message : "未知错误",
+          processingTime: `${processingTime}ms`,
+          attempt,
+          willRetry: attempt < maxRetries,
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+
+        // 如果还有重试次数，等待后继续
+        if (attempt < maxRetries) {
+          const retryDelay = Math.min(3000 * Math.pow(2, attempt - 1), 15000); // 指数退避，最大15秒
+          logger.info(`等待 ${retryDelay}ms 后进行第 ${attempt + 1} 次尝试`, { 
+            attempt: attempt + 1, 
+            maxRetries, 
+            retryDelay 
+          });
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
       }
-
-      const data = originalVideoInfo.item_list[0];
-
-      // 获取无水印视频URL
-      const videoUrl = data.video.play_addr.url_list[0].replace(
-        "playwm",
-        "play"
-      );
-      const desc = data.desc?.trim() || `douyin_${videoId}`;
-      const title = FileUtils.sanitizeFilename(desc);
-
-      const result = {
-        videoId,
-        title,
-        downloadUrl: videoUrl,
-        desc,
-      };
-
-      const processingTime = Date.now() - startTime;
-      logger.info("视频信息解析完成", {
-        ...result,
-        processingTime: `${processingTime}ms`,
-      });
-
-      return result;
-    } catch (error) {
-      const processingTime = Date.now() - startTime;
-      logger.error("解析抖音链接失败", {
-        shareUrl,
-        error: error instanceof Error ? error.message : "未知错误",
-        processingTime: `${processingTime}ms`,
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-      throw new Error(
-        `解析抖音链接失败: ${
-          error instanceof Error ? error.message : "未知错误"
-        }`
-      );
     }
+
+    // 所有重试都失败了
+    const totalProcessingTime = Date.now() - startTime;
+    logger.error("解析抖音链接最终失败", {
+      shareUrl,
+      maxRetries,
+      totalProcessingTime: `${totalProcessingTime}ms`,
+      lastError: lastError?.message || "未知错误",
+      stack: lastError?.stack
+    });
+    
+    throw new Error(
+      `解析抖音链接失败 (已重试 ${maxRetries} 次): ${lastError?.message || "未知错误"}`
+    );
   }
 
   /**
@@ -657,12 +835,13 @@ export class DouyinService {
    */
   async extractText(
     shareLink: string,
-    progressCallback?: (progress: ProcessingProgress) => void
+    progressCallback?: (progress: ProcessingProgress) => void,
+    maxRetries: number = 3
   ): Promise<{ videoInfo: DouyinVideoInfo; extractedText: string }> {
     const overallStartTime = Date.now();
     const tempFiles: string[] = [];
 
-    logger.info("开始完整文本提取流程", { shareLink });
+    logger.info("开始完整文本提取流程", { shareLink, maxRetries });
 
     try {
       // 1. 解析链接
@@ -673,7 +852,7 @@ export class DouyinService {
         message: "正在解析抖音链接",
       });
 
-      const videoInfo = await this.parseShareUrl(shareLink);
+      const videoInfo = await this.parseShareUrl(shareLink, maxRetries);
 
       progressCallback?.({
         stage: "parsing",
@@ -734,6 +913,7 @@ export class DouyinService {
         totalProcessingTime: `${totalProcessingTime}ms`,
         tempFilesProcessed: tempFiles.length,
         tempFilesRetained: !this.autoCleanTempFiles ? tempFiles.length : 0,
+        maxRetries,
       });
 
       return { videoInfo, extractedText };
@@ -745,6 +925,7 @@ export class DouyinService {
         error: error instanceof Error ? error.message : "未知错误",
         totalProcessingTime: `${totalProcessingTime}ms`,
         tempFiles,
+        maxRetries,
         stack: error instanceof Error ? error.stack : undefined,
       });
 
