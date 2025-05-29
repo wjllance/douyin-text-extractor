@@ -12,6 +12,9 @@ const fs = require("fs");
 // 添加TypeScript编译后的路径到模块搜索路径
 require("module").globalPaths.push(path.resolve(__dirname, "../dist"));
 
+// load .env
+require("dotenv").config();
+
 // 颜色配置
 const COLORS = {
   reset: "\x1b[0m",
