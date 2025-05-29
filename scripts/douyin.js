@@ -217,18 +217,8 @@ function showQuickStatus() {
     compiled ? "green" : "red"
   );
 
-  // 检查API密钥 - 先尝试加载配置
-  let hasApiKey = !!process.env.SPEECH_API_KEY;
-
-  // 如果环境变量中没有，尝试从编译后的配置加载
-  if (!hasApiKey && compiled) {
-    try {
-      const { config } = require("../dist/config");
-      hasApiKey = !!config.speechApi.key;
-    } catch (error) {
-      // 加载配置失败，保持原状态
-    }
-  }
+  // 检查API密钥 - 直接从环境变量读取
+  const hasApiKey = !!process.env.SPEECH_API_KEY;
 
   log(
     `API密钥: ${hasApiKey ? "✅ 已设置" : "⚠️ 未设置"}`,

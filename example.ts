@@ -30,26 +30,16 @@ const douyinServiceOpenAI = DouyinService.createWithOpenAI(
   process.env.OPENAI_API_KEY || "your-openai-key"
 );
 
-// 方式4: 使用全局配置的工厂方法（适合在配置环境中使用）
-// 注意：这个方法需要项目配置文件，建议在框架环境中使用
-const douyinServiceWithDefaults = (() => {
-  try {
-    // 仅在有全局配置时使用
-    return DouyinService.createWithDefaultConfig(
-      process.env.SPEECH_API_KEY || "your-speech-api-key",
-      {
-        // 可以覆盖特定配置
-        autoCleanTempFiles: false,
-        downloadDir: "./custom-downloads",
-      }
-    );
-  } catch (error) {
-    // 如果没有全局配置，回退到基本方法
-    return DouyinService.create(
-      process.env.SPEECH_API_KEY || "your-speech-api-key"
-    );
+// 方式4: 使用环境变量的工厂方法
+// 这是推荐的配置方式，直接从环境变量读取配置
+const douyinServiceWithEnvDefaults = DouyinService.createWithEnvDefaults(
+  process.env.SPEECH_API_KEY || "your-speech-api-key",
+  {
+    // 可以覆盖特定配置
+    autoCleanTempFiles: false,
+    downloadDir: "./custom-downloads",
   }
-})();
+);
 
 async function example(): Promise<void> {
   try {

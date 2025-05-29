@@ -74,14 +74,14 @@ class DouyinBatchProcessor {
     try {
       // 动态导入编译后的模块
       const { DouyinService } = require("../dist/services/DouyinService");
-      const { config } = require("../dist/config");
 
-      if (!config.speechApi.key) {
+      const speechApiKey = process.env.SPEECH_API_KEY;
+      if (!speechApiKey) {
         this.logWarning("未设置 SPEECH_API_KEY，将跳过文本提取功能");
-        return DouyinService.createWithDefaultConfig("dummy-key");
+        return DouyinService.createWithEnvDefaults("dummy-key");
       }
 
-      return DouyinService.createWithDefaultConfig(config.speechApi.key);
+      return DouyinService.createWithEnvDefaults(speechApiKey);
     } catch (error) {
       if (error.code === "MODULE_NOT_FOUND") {
         throw new Error("项目未编译，请先运行: npm run build");
@@ -184,8 +184,8 @@ class DouyinBatchProcessor {
       this.logInfo(`找到 ${links.length} 个有效链接`);
 
       // 检查API密钥
-      const { config } = require("../dist/config");
-      options.hasApiKey = !!config.speechApi.key;
+      const speechApiKey = process.env.SPEECH_API_KEY;
+      options.hasApiKey = !!speechApiKey;
 
       if (
         !options.hasApiKey &&
@@ -294,7 +294,7 @@ class DouyinBatchProcessor {
       textResults.forEach((result, index) => {
         summaryContent += `${index + 1}. ${result.videoInfo.title}\n`;
         summaryContent += `   视频ID: ${result.videoInfo.videoId}\n`;
-        summaryContent += `   提取文本: ${result.extractedText}\n\n`;
+        summaryContent += `   提取文本: ${result.extractedText}\n`;
       });
 
       fs.writeFileSync(summaryPath, summaryContent);

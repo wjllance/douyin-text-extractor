@@ -81,14 +81,14 @@ class DouyinTextExtractor {
     try {
       // 动态导入编译后的模块
       const { DouyinService } = require("../dist/services/DouyinService");
-      const { config } = require("../dist/config");
 
-      if (!config.speechApi.key) {
+      const speechApiKey = process.env.SPEECH_API_KEY;
+      if (!speechApiKey) {
         throw new Error("SPEECH_API_KEY 环境变量未设置，请在 .env 文件中配置");
       }
 
-      // 使用新的工厂方法，利用全局配置但保持 DouyinService 的独立性
-      return DouyinService.createWithDefaultConfig(config.speechApi.key);
+      // 使用新的环境变量工厂方法
+      return DouyinService.createWithEnvDefaults(speechApiKey);
     } catch (error) {
       if (error.code === "MODULE_NOT_FOUND") {
         throw new Error("项目未编译，请先运行: npm run build");

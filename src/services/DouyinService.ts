@@ -135,41 +135,49 @@ export class DouyinService {
   }
 
   /**
-   * 创建 DouyinService 实例（使用全局配置作为默认值）
-   * 这个方法提供了一个便利的方式来使用全局配置，同时保持服务类的独立性
+   * 创建 DouyinService 实例（使用环境变量作为默认值）
+   * 这个方法提供了一个便利的方式来使用环境变量配置，保持服务类的独立性
    * @param speechApiKey 语音识别 API 密钥
    * @param overrides 可选：覆盖特定配置项
    * @returns DouyinService 实例
    * @example
    * ```typescript
-   * import { config } from "../config";
+   * // 使用环境变量配置
+   * const service = DouyinService.createWithEnvDefaults(process.env.SPEECH_API_KEY!);
    * 
-   * // 使用全局配置
-   * const service = DouyinService.createWithDefaultConfig(config.speechApi.key);
-   * 
-   * // 使用全局配置但覆盖某些选项
-   * const service = DouyinService.createWithDefaultConfig(config.speechApi.key, {
+   * // 使用环境变量配置但覆盖某些选项
+   * const service = DouyinService.createWithEnvDefaults(process.env.SPEECH_API_KEY!, {
    *   autoCleanTempFiles: false,
    *   downloadDir: "./custom-downloads"
    * });
    * ```
    */
+  static createWithEnvDefaults(
+    speechApiKey: string,
+    overrides?: Partial<Omit<DouyinServiceOptions, 'speechApiKey'>>
+  ): DouyinService {
+    const defaultConfig = {
+      speechApiKey,
+      speechApiBaseUrl: process.env.SPEECH_API_BASE_URL || "https://api.siliconflow.cn/v1/audio/transcriptions",
+      speechModel: process.env.SPEECH_MODEL || "FunAudioLLM/SenseVoiceSmall",
+      autoCleanTempFiles: process.env.AUTO_CLEAN_TEMP_FILES !== "false",
+      downloadDir: process.env.DOWNLOAD_DIR || path.join(process.cwd(), "downloads"),
+      tempDir: process.env.TEMP_DIR || path.join(process.cwd(), "temp"),
+      ...overrides,
+    };
+    
+    return new DouyinService(defaultConfig);
+  }
+
+  /**
+   * @deprecated 请使用 createWithEnvDefaults 替代
+   * 向后兼容的方法，现在直接从环境变量读取配置
+   */
   static createWithDefaultConfig(
     speechApiKey: string,
     overrides?: Partial<Omit<DouyinServiceOptions, 'speechApiKey'>>
   ): DouyinService {
-    // 动态导入配置，避免在模块级别的依赖
-    const { config } = require("../config");
-    
-    return new DouyinService({
-      speechApiKey,
-      speechApiBaseUrl: config.speechApi.baseUrl,
-      speechModel: config.speechApi.model,
-      autoCleanTempFiles: config.cleanup.autoCleanTempFiles,
-      downloadDir: config.downloadDir,
-      tempDir: config.tempDir,
-      ...overrides,
-    });
+    return DouyinService.createWithEnvDefaults(speechApiKey, overrides);
   }
 
   /**
