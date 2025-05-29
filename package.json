@@ -1,0 +1,62 @@
+{
+  "name": "douyin-text-extractor",
+  "version": "1.0.0",
+  "description": "Node.js + TypeScript library for extracting text from Douyin/TikTok videos",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "douyin",
+    "tiktok",
+    "video",
+    "text-extraction",
+    "speech-recognition",
+    "nodejs",
+    "typescript",
+    "npm-package",
+    "library",
+    "extractor",
+    "transcription"
+  ],
+  "author": "wjllance",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wjllance/douyin-text-extractor.git"
+  },
+  "homepage": "https://github.com/wjllance/douyin-text-extractor#readme",
+  "bugs": {
+    "url": "https://github.com/wjllance/douyin-text-extractor/issues"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "form-data": "^4.0.0",
+    "winston": "^3.11.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/fluent-ffmpeg": "^2.1.24",
+    "@types/uuid": "^9.0.7",
+    "@types/node": "^20.8.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "eslint": "^8.50.0",
+    "typescript": "^5.2.2",
+    "rimraf": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

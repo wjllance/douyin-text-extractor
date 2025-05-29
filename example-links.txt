@@ -1,0 +1,18 @@
+# 抖音视频链接示例文件
+# 每行一个链接，以 # 开头的为注释行
+
+# 示例视频1 - 请替换为真实的抖音链接
+# https://v.douyin.com/example1
+
+# 示例视频2 - 请替换为真实的抖音链接  
+# https://v.douyin.com/example2
+
+# 示例视频3 - 请替换为真实的抖音链接
+# https://v.douyin.com/example3
+
+# 使用说明:
+# 1. 删除注释符号 # 和空格
+# 2. 将示例链接替换为真实的抖音分享链接
+# 3. 每行只写一个链接
+# 4. 保存文件后使用批量处理命令:
+#    node scripts/douyin-batch.js example-links.txt -m download 
