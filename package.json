@@ -1,6 +1,6 @@
 {
   "name": "douyin-text-extractor",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Node.js + TypeScript library for extracting text from Douyin/TikTok videos",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
