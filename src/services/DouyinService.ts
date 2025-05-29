@@ -7,6 +7,7 @@ import {
   DouyinVideoInfo,
   SpeechApiResponse,
   ProcessingProgress,
+  DouyinServiceOptions,
 } from "../types";
 import { FileUtils } from "../utils/fileUtils";
 import { config } from "../config";
@@ -20,22 +21,107 @@ export class DouyinService {
   private readonly speechModel: string;
   private readonly autoCleanTempFiles: boolean;
 
-  constructor(
-    speechApiKey: string,
-    speechApiBaseUrl: string,
-    speechModel: string,
-    autoCleanTempFiles: boolean = true
-  ) {
+  /**
+   * 创建 DouyinService 实例
+   * @param options 配置选项
+   * @example
+   * ```typescript
+   * // 基本用法（仅提供必需参数）
+   * const service = new DouyinService({
+   *   speechApiKey: "your-api-key"
+   * });
+   * 
+   * // 完整配置
+   * const service = new DouyinService({
+   *   speechApiKey: "your-api-key",
+   *   speechApiBaseUrl: "https://api.custom.com/v1/audio/transcriptions",
+   *   speechModel: "whisper-1",
+   *   autoCleanTempFiles: false
+   * });
+   * ```
+   */
+  constructor(options: DouyinServiceOptions) {
+    // 设置默认值
+    const {
+      speechApiKey,
+      speechApiBaseUrl = "https://api.siliconflow.cn/v1/audio/transcriptions",
+      speechModel = "FunAudioLLM/SenseVoiceSmall",
+      autoCleanTempFiles = true,
+    } = options;
+
+    if (!speechApiKey) {
+      throw new Error("speechApiKey is required");
+    }
+
     this.speechApiKey = speechApiKey;
     this.speechApiBaseUrl = speechApiBaseUrl;
     this.speechModel = speechModel;
     this.autoCleanTempFiles = autoCleanTempFiles;
 
     logger.info("DouyinService initialized", {
-      speechApiBaseUrl,
-      speechModel,
-      hasApiKey: !!speechApiKey,
+      speechApiBaseUrl: this.speechApiBaseUrl,
+      speechModel: this.speechModel,
+      hasApiKey: !!this.speechApiKey,
       autoCleanTempFiles: this.autoCleanTempFiles,
+    });
+  }
+
+  /**
+   * 创建 DouyinService 实例的简化方法（使用默认配置）
+   * @param speechApiKey 语音识别 API 密钥
+   * @returns DouyinService 实例
+   * @example
+   * ```typescript
+   * const service = DouyinService.create("your-api-key");
+   * ```
+   */
+  static create(speechApiKey: string): DouyinService {
+    return new DouyinService({ speechApiKey });
+  }
+
+  /**
+   * 创建 DouyinService 实例（使用 SiliconFlow API）
+   * @param speechApiKey 语音识别 API 密钥
+   * @param speechModel 可选：语音识别模型
+   * @returns DouyinService 实例
+   * @example
+   * ```typescript
+   * const service = DouyinService.createWithSiliconFlow("your-api-key");
+   * // 或自定义模型
+   * const service = DouyinService.createWithSiliconFlow("your-api-key", "custom-model");
+   * ```
+   */
+  static createWithSiliconFlow(
+    speechApiKey: string,
+    speechModel: string = "FunAudioLLM/SenseVoiceSmall"
+  ): DouyinService {
+    return new DouyinService({
+      speechApiKey,
+      speechApiBaseUrl: "https://api.siliconflow.cn/v1/audio/transcriptions",
+      speechModel,
+    });
+  }
+
+  /**
+   * 创建 DouyinService 实例（使用 OpenAI API）
+   * @param speechApiKey OpenAI API 密钥
+   * @param speechModel 可选：语音识别模型
+   * @returns DouyinService 实例
+   * @example
+   * ```typescript
+   * const service = DouyinService.createWithOpenAI("your-openai-key");
+   * // 或自定义模型
+   * const service = DouyinService.createWithOpenAI("your-openai-key", "whisper-1");
+   * ```
+   */
+  static createWithOpenAI(
+    speechApiKey: string,
+    speechModel: string = "whisper-1"
+  ): DouyinService {
+    return new DouyinService({
+      speechApiKey,
+      speechApiBaseUrl: "https://api.openai.com/v1/audio/transcriptions",
+      speechModel,
     });
   }
 

@@ -37,11 +37,9 @@ npm install douyin-text-extractor
 ```javascript
 const { DouyinService } = require("douyin-text-extractor");
 
-const service = new DouyinService(
-  "your-speech-api-key",
-  "https://api.siliconflow.cn/v1/audio/transcriptions",
-  "FunAudioLLM/SenseVoiceSmall"
-);
+const service = new DouyinService({
+  speechApiKey: "your-speech-api-key"
+});
 
 async function main() {
   const shareLink = "抖音分享链接";
@@ -63,13 +61,15 @@ main();
 #### TypeScript 示例
 
 ```typescript
-import { DouyinService, ProcessingProgress } from "douyin-text-extractor";
+import { DouyinService, DouyinServiceOptions, ProcessingProgress } from "douyin-text-extractor";
 
-const service = new DouyinService(
-  "your-speech-api-key",
-  "https://api.siliconflow.cn/v1/audio/transcriptions",
-  "FunAudioLLM/SenseVoiceSmall"
-);
+const options: DouyinServiceOptions = {
+  speechApiKey: "your-speech-api-key",
+  speechApiBaseUrl: "https://api.siliconflow.cn/v1/audio/transcriptions",
+  speechModel: "FunAudioLLM/SenseVoiceSmall",
+};
+
+const service = new DouyinService(options);
 
 async function main(): Promise<void> {
   const shareLink = "抖音分享链接";
@@ -126,11 +126,11 @@ LOG_LEVEL=info
 ```javascript
 const { DouyinService } = require("douyin-text-extractor");
 
-const service = new DouyinService(
-  process.env.SPEECH_API_KEY,
-  process.env.SPEECH_API_BASE_URL,
-  process.env.SPEECH_MODEL
-);
+const service = new DouyinService({
+  speechApiKey: process.env.SPEECH_API_KEY,
+  speechApiBaseUrl: process.env.SPEECH_API_BASE_URL,
+  speechModel: process.env.SPEECH_MODEL,
+});
 
 async function processVideo() {
   const shareLink = "7.32 复制打开抖音，看看【示例视频】https://v.douyin.com/xxx/";

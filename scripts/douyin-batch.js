@@ -75,20 +75,20 @@ class DouyinBatchProcessor {
 
       if (!config.speechApi.key) {
         this.logWarning("未设置 SPEECH_API_KEY，将跳过文本提取功能");
-        return new DouyinService(
-          "dummy-key",
-          config.speechApi.baseUrl,
-          config.speechApi.model,
-          config.cleanup.autoCleanTempFiles
-        );
+        return new DouyinService({
+          speechApiKey: "dummy-key",
+          speechApiBaseUrl: config.speechApi.baseUrl,
+          speechModel: config.speechApi.model,
+          autoCleanTempFiles: config.cleanup.autoCleanTempFiles,
+        });
       }
 
-      return new DouyinService(
-        config.speechApi.key,
-        config.speechApi.baseUrl,
-        config.speechApi.model,
-        config.cleanup.autoCleanTempFiles
-      );
+      return new DouyinService({
+        speechApiKey: config.speechApi.key,
+        speechApiBaseUrl: config.speechApi.baseUrl,
+        speechModel: config.speechApi.model,
+        autoCleanTempFiles: config.cleanup.autoCleanTempFiles,
+      });
     } catch (error) {
       if (error.code === "MODULE_NOT_FOUND") {
         throw new Error("项目未编译，请先运行: npm run build");

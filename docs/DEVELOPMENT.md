@@ -308,11 +308,11 @@ describe('DouyinService', () => {
   let service: DouyinService;
   
   beforeEach(() => {
-    service = new DouyinService(
-      'test-api-key',
-      'https://api.example.com',
-      'test-model'
-    );
+    service = new DouyinService({
+      speechApiKey: 'test-api-key',
+      speechApiBaseUrl: 'https://api.example.com',
+      speechModel: 'test-model',
+    });
   });
   
   it('should parse share url correctly', async () => {

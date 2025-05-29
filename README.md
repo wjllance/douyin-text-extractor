@@ -23,11 +23,13 @@ npm install douyin-text-extractor
 ```javascript
 const { DouyinService } = require("douyin-text-extractor");
 
-const service = new DouyinService(
-  "your-speech-api-key",
-  "https://api.siliconflow.cn/v1/audio/transcriptions",
-  "FunAudioLLM/SenseVoiceSmall"
-);
+// 最简单的方式（使用默认配置）
+const service = DouyinService.create("your-speech-api-key");
+
+// 或者使用构造函数（推荐）
+const service = new DouyinService({
+  speechApiKey: "your-speech-api-key"
+});
 
 async function extractText() {
   const shareLink = "复制的抖音分享链接";
@@ -49,15 +51,26 @@ extractText();
 ### TypeScript 支持
 
 ```typescript
-import { DouyinService, ProcessingProgress } from "douyin-text-extractor";
+import { DouyinService, DouyinServiceOptions } from "douyin-text-extractor";
 
-const service = new DouyinService(apiKey, baseUrl, model);
+// 基本用法
+const service = new DouyinService({
+  speechApiKey: "your-api-key"
+});
 
-const result = await service.extractText(shareLink, 
-  (progress: ProcessingProgress) => {
-    console.log(`${progress.stage}: ${progress.progress}%`);
-  }
-);
+// 完整配置
+const options: DouyinServiceOptions = {
+  speechApiKey: "your-api-key",
+  speechApiBaseUrl: "https://api.custom.com/v1/audio/transcriptions",
+  speechModel: "whisper-1",
+  autoCleanTempFiles: false
+};
+const service = new DouyinService(options);
+
+// 使用工厂方法
+const service1 = DouyinService.create("your-api-key");
+const service2 = DouyinService.createWithSiliconFlow("your-api-key");
+const service3 = DouyinService.createWithOpenAI("your-openai-key");
 ```
 
 ## 📖 API 文档
@@ -65,8 +78,21 @@ const result = await service.extractText(shareLink,
 ### DouyinService
 
 ```javascript
-new DouyinService(speechApiKey, speechApiBaseUrl, speechModel, autoCleanTempFiles)
+// 构造函数
+new DouyinService(options)
+
+// 工厂方法
+DouyinService.create(speechApiKey)
+DouyinService.createWithSiliconFlow(speechApiKey, speechModel?)
+DouyinService.createWithOpenAI(speechApiKey, speechModel?)
 ```
+
+**构造选项 (DouyinServiceOptions)：**
+
+- `speechApiKey` (string, 必需) - 语音识别 API 密钥
+- `speechApiBaseUrl` (string, 可选) - API 基础URL，默认: SiliconFlow API
+- `speechModel` (string, 可选) - 语音识别模型，默认: FunAudioLLM/SenseVoiceSmall
+- `autoCleanTempFiles` (boolean, 可选) - 是否自动清理临时文件，默认: true
 
 **主要方法：**
 

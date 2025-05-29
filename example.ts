@@ -1,15 +1,31 @@
 import {
   DouyinService,
+  DouyinServiceOptions,
   DouyinVideoInfo,
   ProcessingProgress,
 } from "./src/index";
 
-// 配置服务
-const douyinService = new DouyinService(
-  process.env.SPEECH_API_KEY || "your-speech-api-key",
-  process.env.SPEECH_API_BASE_URL ||
-    "https://api.siliconflow.cn/v1/audio/transcriptions",
-  process.env.SPEECH_MODEL || "FunAudioLLM/SenseVoiceSmall"
+// 方式1: 使用工厂方法（最简单）
+const douyinService1 = DouyinService.create(
+  process.env.SPEECH_API_KEY || "your-speech-api-key"
+);
+
+// 方式2: 使用构造函数（推荐）
+const options: DouyinServiceOptions = {
+  speechApiKey: process.env.SPEECH_API_KEY || "your-speech-api-key",
+  speechApiBaseUrl: process.env.SPEECH_API_BASE_URL, // 可选，默认使用 SiliconFlow
+  speechModel: process.env.SPEECH_MODEL, // 可选，默认使用 FunAudioLLM/SenseVoiceSmall
+  autoCleanTempFiles: true, // 可选，默认为 true
+};
+const douyinService = new DouyinService(options);
+
+// 方式3: 使用预设的 API 提供商
+const douyinServiceSiliconFlow = DouyinService.createWithSiliconFlow(
+  process.env.SPEECH_API_KEY || "your-speech-api-key"
+);
+
+const douyinServiceOpenAI = DouyinService.createWithOpenAI(
+  process.env.OPENAI_API_KEY || "your-openai-key"
 );
 
 async function example(): Promise<void> {
