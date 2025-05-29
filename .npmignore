@@ -3,50 +3,40 @@ src/
 *.ts
 !dist/
 
-# Examples and docs
-example.js
+# Documentation (only core docs are included via package.json files field)
+docs/
+CHANGELOG.md
+
+# Examples and development tools
 example.ts
 douyin-cli
 test-script.js
-example-test.js
-test.sh
 example-links.txt
+scripts/
 
-# Docs that are not essential
-日志功能说明.md
-更新日志.md
-下载功能说明.md
-命令行工具使用说明.md
-测试使用说明.md
-快速启动指南.md
-技术对比与实现说明.md
-
-# Build and development files
+# Build and development configuration
 .eslintrc.js
 tsconfig.json
-docker-compose.yml
-Dockerfile
 
 # Environment files
 .env
 .env.*
 env.example
 
-# Logs
+# Logs and temporary files
 logs/
-*.log
-
-# Temporary files
 temp/
 downloads/
+*.log
 result.txt
 
-# Development dependencies
+# Dependencies and package management
 node_modules/
 .npm
 .nyc_output
+package-lock.json
 
-# OS files
+# OS generated files
 .DS_Store
 Thumbs.db
 
@@ -57,4 +47,10 @@ Thumbs.db
 *.swo
 
 # Git files
-.gitignore 
+.gitignore
+.git/
+
+# Test files
+test/
+*.test.js
+*.test.ts 
