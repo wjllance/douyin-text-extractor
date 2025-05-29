@@ -87,8 +87,8 @@ class DouyinTextExtractor {
         throw new Error("SPEECH_API_KEY 环境变量未设置，请在 .env 文件中配置");
       }
 
-      // 使用新的环境变量工厂方法
-      return DouyinService.createWithEnvDefaults(speechApiKey);
+      // 使用环境变量工厂方法
+      return DouyinService.createWithDefaultConfig(speechApiKey);
     } catch (error) {
       if (error.code === "MODULE_NOT_FOUND") {
         throw new Error("项目未编译，请先运行: npm run build");

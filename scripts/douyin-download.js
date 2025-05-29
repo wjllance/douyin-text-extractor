@@ -83,7 +83,7 @@ class DouyinDownloader {
       const { DouyinService } = require("../dist/services/DouyinService");
 
       // 对于下载功能，不需要语音识别API密钥，使用虚拟密钥
-      return DouyinService.createWithEnvDefaults("dummy-key");
+      return DouyinService.createWithDefaultConfig("dummy-key");
     } catch (error) {
       if (error.code === "MODULE_NOT_FOUND") {
         throw new Error("项目未编译，请先运行: npm run build");

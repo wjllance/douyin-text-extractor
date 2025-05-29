@@ -30,16 +30,15 @@ const douyinServiceOpenAI = DouyinService.createWithOpenAI(
   process.env.OPENAI_API_KEY || "your-openai-key"
 );
 
-// 方式4: 使用环境变量的工厂方法
-// 这是推荐的配置方式，直接从环境变量读取配置
-const douyinServiceWithEnvDefaults = DouyinService.createWithEnvDefaults(
-  process.env.SPEECH_API_KEY || "your-speech-api-key",
-  {
-    // 可以覆盖特定配置
-    autoCleanTempFiles: false,
-    downloadDir: "./custom-downloads",
-  }
-);
+// 方式4: 使用直接构造函数（完全配置）
+const douyinServiceWithFullConfig = new DouyinService({
+  speechApiKey: process.env.SPEECH_API_KEY || "your-speech-api-key",
+  speechApiBaseUrl: process.env.SPEECH_API_BASE_URL || "https://api.siliconflow.cn/v1/audio/transcriptions",
+  speechModel: process.env.SPEECH_MODEL || "FunAudioLLM/SenseVoiceSmall",
+  autoCleanTempFiles: process.env.AUTO_CLEAN_TEMP_FILES !== "false",
+  downloadDir: process.env.DOWNLOAD_DIR || "./downloads",
+  tempDir: process.env.TEMP_DIR || "./temp",
+});
 
 async function example(): Promise<void> {
   try {

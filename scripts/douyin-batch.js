@@ -78,10 +78,10 @@ class DouyinBatchProcessor {
       const speechApiKey = process.env.SPEECH_API_KEY;
       if (!speechApiKey) {
         this.logWarning("未设置 SPEECH_API_KEY，将跳过文本提取功能");
-        return DouyinService.createWithEnvDefaults("dummy-key");
+        return DouyinService.createWithDefaultConfig("dummy-key");
       }
 
-      return DouyinService.createWithEnvDefaults(speechApiKey);
+      return DouyinService.createWithDefaultConfig(speechApiKey);
     } catch (error) {
       if (error.code === "MODULE_NOT_FOUND") {
         throw new Error("项目未编译，请先运行: npm run build");
