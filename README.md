@@ -71,6 +71,7 @@ const service = new DouyinService(options);
 const service1 = DouyinService.create("your-api-key");
 const service2 = DouyinService.createWithSiliconFlow("your-api-key");
 const service3 = DouyinService.createWithOpenAI("your-openai-key");
+const service4 = DouyinService.createWithEnvDefaults("your-api-key");
 ```
 
 ## 📖 API 文档
@@ -85,6 +86,7 @@ new DouyinService(options)
 DouyinService.create(speechApiKey)
 DouyinService.createWithSiliconFlow(speechApiKey, speechModel?)
 DouyinService.createWithOpenAI(speechApiKey, speechModel?)
+DouyinService.createWithEnvDefaults(speechApiKey, overrides?)
 ```
 
 **构造选项 (DouyinServiceOptions)：**
@@ -93,6 +95,8 @@ DouyinService.createWithOpenAI(speechApiKey, speechModel?)
 - `speechApiBaseUrl` (string, 可选) - API 基础URL，默认: SiliconFlow API
 - `speechModel` (string, 可选) - 语音识别模型，默认: FunAudioLLM/SenseVoiceSmall
 - `autoCleanTempFiles` (boolean, 可选) - 是否自动清理临时文件，默认: true
+- `downloadDir` (string, 可选) - 下载目录，默认: ./downloads
+- `tempDir` (string, 可选) - 临时文件目录，默认: ./temp
 
 **主要方法：**
 
@@ -107,11 +111,36 @@ DouyinService.createWithOpenAI(speechApiKey, speechModel?)
 ### 环境变量
 
 ```bash
+# 语音识别 API 配置（必需）
 SPEECH_API_KEY="your-api-key"
 SPEECH_API_BASE_URL="https://api.siliconflow.cn/v1/audio/transcriptions"
 SPEECH_MODEL="FunAudioLLM/SenseVoiceSmall"
+
+# 文件路径配置（可选）
 TEMP_DIR="./temp"
 DOWNLOAD_DIR="./downloads"
+
+# 临时文件管理（可选）
+AUTO_CLEAN_TEMP_FILES="true"
+
+# 日志配置（可选）
+LOG_LEVEL="info"
+LOG_FILE="./logs/app.log"
+```
+
+### 工厂方法推荐
+
+推荐使用 `createWithEnvDefaults` 工厂方法，它会自动从环境变量读取配置：
+
+```typescript
+// 推荐：从环境变量自动配置
+const service = DouyinService.createWithEnvDefaults(
+  process.env.SPEECH_API_KEY!,
+  {
+    // 可选：覆盖特定配置
+    downloadDir: "./custom-downloads"
+  }
+);
 ```
 
 ### 依赖要求

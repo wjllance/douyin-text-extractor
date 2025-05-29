@@ -9,6 +9,8 @@
 const path = require("path");
 const { spawn } = require("child_process");
 
+require("dotenv").config();
+
 // 颜色配置
 const COLORS = {
   reset: "\x1b[0m",
