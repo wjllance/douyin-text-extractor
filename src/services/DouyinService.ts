@@ -10,7 +10,6 @@ import {
   DouyinServiceOptions,
 } from "../types";
 import { FileUtils } from "../utils/fileUtils";
-import { config } from "../config";
 import logger from "../utils/logger";
 
 export class DouyinService {
@@ -20,6 +19,8 @@ export class DouyinService {
   private readonly speechApiBaseUrl: string;
   private readonly speechModel: string;
   private readonly autoCleanTempFiles: boolean;
+  private readonly downloadDir: string;
+  private readonly tempDir: string;
 
   /**
    * 创建 DouyinService 实例
@@ -36,7 +37,9 @@ export class DouyinService {
    *   speechApiKey: "your-api-key",
    *   speechApiBaseUrl: "https://api.custom.com/v1/audio/transcriptions",
    *   speechModel: "whisper-1",
-   *   autoCleanTempFiles: false
+   *   autoCleanTempFiles: false,
+   *   downloadDir: "./custom-downloads",
+   *   tempDir: "./custom-temp"
    * });
    * ```
    */
@@ -47,6 +50,8 @@ export class DouyinService {
       speechApiBaseUrl = "https://api.siliconflow.cn/v1/audio/transcriptions",
       speechModel = "FunAudioLLM/SenseVoiceSmall",
       autoCleanTempFiles = true,
+      downloadDir = path.join(process.cwd(), "downloads"),
+      tempDir = path.join(process.cwd(), "temp"),
     } = options;
 
     if (!speechApiKey) {
@@ -57,12 +62,16 @@ export class DouyinService {
     this.speechApiBaseUrl = speechApiBaseUrl;
     this.speechModel = speechModel;
     this.autoCleanTempFiles = autoCleanTempFiles;
+    this.downloadDir = downloadDir;
+    this.tempDir = tempDir;
 
     logger.info("DouyinService initialized", {
       speechApiBaseUrl: this.speechApiBaseUrl,
       speechModel: this.speechModel,
       hasApiKey: !!this.speechApiKey,
       autoCleanTempFiles: this.autoCleanTempFiles,
+      downloadDir: this.downloadDir,
+      tempDir: this.tempDir,
     });
   }
 
@@ -122,6 +131,44 @@ export class DouyinService {
       speechApiKey,
       speechApiBaseUrl: "https://api.openai.com/v1/audio/transcriptions",
       speechModel,
+    });
+  }
+
+  /**
+   * 创建 DouyinService 实例（使用全局配置作为默认值）
+   * 这个方法提供了一个便利的方式来使用全局配置，同时保持服务类的独立性
+   * @param speechApiKey 语音识别 API 密钥
+   * @param overrides 可选：覆盖特定配置项
+   * @returns DouyinService 实例
+   * @example
+   * ```typescript
+   * import { config } from "../config";
+   * 
+   * // 使用全局配置
+   * const service = DouyinService.createWithDefaultConfig(config.speechApi.key);
+   * 
+   * // 使用全局配置但覆盖某些选项
+   * const service = DouyinService.createWithDefaultConfig(config.speechApi.key, {
+   *   autoCleanTempFiles: false,
+   *   downloadDir: "./custom-downloads"
+   * });
+   * ```
+   */
+  static createWithDefaultConfig(
+    speechApiKey: string,
+    overrides?: Partial<Omit<DouyinServiceOptions, 'speechApiKey'>>
+  ): DouyinService {
+    // 动态导入配置，避免在模块级别的依赖
+    const { config } = require("../config");
+    
+    return new DouyinService({
+      speechApiKey,
+      speechApiBaseUrl: config.speechApi.baseUrl,
+      speechModel: config.speechApi.model,
+      autoCleanTempFiles: config.cleanup.autoCleanTempFiles,
+      downloadDir: config.downloadDir,
+      tempDir: config.tempDir,
+      ...overrides,
     });
   }
 
@@ -265,19 +312,19 @@ export class DouyinService {
       videoId: videoInfo.videoId,
       title: videoInfo.title,
       downloadUrl: videoInfo.downloadUrl,
-      downloadDir: config.downloadDir,
+      downloadDir: this.downloadDir,
     });
 
     // 确保下载目录存在
-    if (!fs.existsSync(config.downloadDir)) {
-      logger.info("创建下载目录", { downloadDir: config.downloadDir });
-      fs.mkdirSync(config.downloadDir, { recursive: true });
+    if (!fs.existsSync(this.downloadDir)) {
+      logger.info("创建下载目录", { downloadDir: this.downloadDir });
+      fs.mkdirSync(this.downloadDir, { recursive: true });
       logger.debug("下载目录创建成功");
     }
 
     // 使用 videoId 作为文件名
     const fileName = `${videoInfo.videoId}.mp4`;
-    const videoPath = path.join(config.downloadDir, fileName);
+    const videoPath = path.join(this.downloadDir, fileName);
 
     logger.debug("生成文件路径", { fileName, videoPath });
 

@@ -16,6 +16,8 @@ const options: DouyinServiceOptions = {
   speechApiBaseUrl: process.env.SPEECH_API_BASE_URL, // 可选，默认使用 SiliconFlow
   speechModel: process.env.SPEECH_MODEL, // 可选，默认使用 FunAudioLLM/SenseVoiceSmall
   autoCleanTempFiles: true, // 可选，默认为 true
+  downloadDir: "./downloads", // 可选，默认为 ./downloads
+  tempDir: "./temp", // 可选，默认为 ./temp
 };
 const douyinService = new DouyinService(options);
 
@@ -27,6 +29,27 @@ const douyinServiceSiliconFlow = DouyinService.createWithSiliconFlow(
 const douyinServiceOpenAI = DouyinService.createWithOpenAI(
   process.env.OPENAI_API_KEY || "your-openai-key"
 );
+
+// 方式4: 使用全局配置的工厂方法（适合在配置环境中使用）
+// 注意：这个方法需要项目配置文件，建议在框架环境中使用
+const douyinServiceWithDefaults = (() => {
+  try {
+    // 仅在有全局配置时使用
+    return DouyinService.createWithDefaultConfig(
+      process.env.SPEECH_API_KEY || "your-speech-api-key",
+      {
+        // 可以覆盖特定配置
+        autoCleanTempFiles: false,
+        downloadDir: "./custom-downloads",
+      }
+    );
+  } catch (error) {
+    // 如果没有全局配置，回退到基本方法
+    return DouyinService.create(
+      process.env.SPEECH_API_KEY || "your-speech-api-key"
+    );
+  }
+})();
 
 async function example(): Promise<void> {
   try {

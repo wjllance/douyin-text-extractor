@@ -81,15 +81,9 @@ class DouyinDownloader {
     try {
       // 动态导入编译后的模块
       const { DouyinService } = require("../dist/services/DouyinService");
-      const { config } = require("../dist/config");
 
-      // 对于下载功能，不需要语音识别API密钥
-      return new DouyinService({
-        speechApiKey: "dummy-key", // 占位符，下载不需要真实的API密钥
-        speechApiBaseUrl: config.speechApi.baseUrl,
-        speechModel: config.speechApi.model,
-        autoCleanTempFiles: config.cleanup.autoCleanTempFiles,
-      });
+      // 对于下载功能，不需要语音识别API密钥，使用虚拟密钥
+      return DouyinService.createWithDefaultConfig("dummy-key");
     } catch (error) {
       if (error.code === "MODULE_NOT_FOUND") {
         throw new Error("项目未编译，请先运行: npm run build");

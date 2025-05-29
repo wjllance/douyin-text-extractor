@@ -56,6 +56,10 @@ export interface DouyinServiceOptions {
   speechModel?: string;
   /** 是否自动清理临时文件，默认: true */
   autoCleanTempFiles?: boolean;
+  /** 下载目录，默认: ./downloads */
+  downloadDir?: string;
+  /** 临时文件目录，默认: ./temp */
+  tempDir?: string;
 }
 
 /**
