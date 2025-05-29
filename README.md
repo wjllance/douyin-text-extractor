@@ -136,6 +136,17 @@ docker-compose up -d
 - [开发指南](./docs/DEVELOPMENT.md) - 开发和技术实现说明
 - [更新日志](./CHANGELOG.md) - 版本更新记录
 
+## 🚧 未来扩展方向
+
+项目正在持续发展中，计划实现以下核心功能：
+
+- **🌐 多平台支持** - 扩展支持快手、小红书、B站等主流短视频平台
+- **📝 智能文本分析** - 集成关键词提取、内容摘要、情感分析等 AI 功能
+- **⚡ 批量处理优化** - 提升大规模视频处理的性能和稳定性
+- **🌍 多语言支持** - 支持多种语言的语音识别和文本处理
+
+欢迎在 [Issues](https://github.com/your-repo/douyin-text-extractor/issues) 中讨论和建议！
+
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
