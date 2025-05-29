@@ -4,18 +4,33 @@
 
 ## 🏗️ 技术架构
 
-### 核心组件
+### 项目结构
+
+这是一个 **TypeScript npm 库**，提供抖音视频文本提取功能：
 
 ```
-src/
-├── config/           # 配置管理
-├── controllers/      # HTTP 控制器  
-├── middleware/       # Express 中间件
-├── services/         # 业务逻辑服务
-├── types/           # TypeScript 类型定义
-├── utils/           # 工具函数
-└── index.ts         # 应用入口
+douyin-text-extractor/
+├── 📁 src/                    # 源代码
+│   ├── config/               # 配置管理
+│   ├── services/             # 核心业务逻辑
+│   │   └── DouyinService.ts  # 主要服务类
+│   ├── types/               # TypeScript 类型定义
+│   ├── utils/              # 工具函数
+│   │   ├── fileUtils.ts    # 文件操作工具
+│   │   └── logger.ts       # 日志工具
+│   └── index.ts            # 库的导出入口
+├── 📁 scripts/             # 命令行工具
+├── 📁 docs/               # 文档
+├── example.ts             # 使用示例
+└── dist/                  # 编译后的代码 (发布到 npm)
 ```
+
+### 核心组件
+
+- **DouyinService**: 主要服务类，提供所有核心功能
+- **类型定义**: 完整的 TypeScript 接口定义
+- **工具函数**: 文件操作、日志记录等辅助功能
+- **命令行工具**: 独立的 CLI 脚本
 
 ### 关键类型定义
 
@@ -33,6 +48,14 @@ export interface ProcessingProgress {
   progress: number;
   message: string;
 }
+
+export interface ExtractTextResponse {
+  status: "success" | "error";
+  videoInfo?: DouyinVideoInfo;
+  extractedText?: string;
+  error?: string;
+  processingTime?: number;
+}
 ```
 
 ## 🔧 开发环境
@@ -47,21 +70,21 @@ cd douyin-text-extractor
 # 2. 安装依赖
 npm install
 
-# 3. 配置环境变量
+# 3. 配置环境变量 (可选)
 cp env.example .env
 # 编辑 .env 文件设置 API 密钥
 
 # 4. 编译 TypeScript
 npm run build
 
-# 5. 开发模式运行
-npm run dev
+# 5. 运行示例 (需要 Node.js 环境)
+node -r ts-node/register example.ts
 ```
 
-### 开发工具
+### 开发脚本
 
 ```bash
-# TypeScript 编译检查
+# TypeScript 编译
 npm run build
 
 # ESLint 代码检查
@@ -70,13 +93,38 @@ npm run lint
 # 自动修复代码风格
 npm run lint:fix
 
-# 运行测试
-npm test
+# 清理构建产物
+npm run clean
+
+# 发布前构建
+npm run prepublishOnly
 ```
 
 ## 📋 核心实现
 
-### 1. 链接解析
+### 1. DouyinService 类
+
+主要的服务类，提供所有核心功能：
+
+```typescript
+export class DouyinService {
+  constructor(
+    speechApiKey: string,
+    speechApiBaseUrl: string,
+    speechModel: string,
+    autoCleanTempFiles: boolean = true
+  );
+
+  // 核心方法
+  async parseShareUrl(shareText: string): Promise<DouyinVideoInfo>;
+  async downloadVideo(videoInfo: DouyinVideoInfo, progressCallback?): Promise<string>;
+  async extractAudio(videoPath: string, progressCallback?): Promise<string>;
+  async extractTextFromAudio(audioPath: string, progressCallback?): Promise<string>;
+  async extractText(shareLink: string, progressCallback?): Promise<ExtractTextResponse>;
+}
+```
+
+### 2. 链接解析
 
 ```typescript
 async parseShareUrl(shareText: string): Promise<DouyinVideoInfo> {
@@ -96,7 +144,7 @@ async parseShareUrl(shareText: string): Promise<DouyinVideoInfo> {
 }
 ```
 
-### 2. 视频下载
+### 3. 视频下载
 
 ```typescript
 async downloadVideo(
@@ -125,7 +173,9 @@ async downloadVideo(
 }
 ```
 
-### 3. 音频提取
+### 4. 音频提取
+
+使用 FFmpeg 从视频中提取音频：
 
 ```typescript
 async extractAudio(
@@ -151,7 +201,9 @@ async extractAudio(
 }
 ```
 
-### 4. 语音识别
+### 5. 语音识别
+
+调用语音识别 API 将音频转换为文本：
 
 ```typescript
 async extractTextFromAudio(
@@ -184,20 +236,23 @@ async extractTextFromAudio(
 ### 日志配置
 
 ```typescript
-// src/config/logger.ts
+// src/utils/logger.ts
 import winston from 'winston';
 
-export const logger = winston.createLogger({
+const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.json()
   ),
   transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'app.log' })
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
   ]
 });
+
+export default logger;
 ```
 
 ### 典型日志示例
@@ -216,59 +271,47 @@ export const logger = winston.createLogger({
 
 ## 🧪 测试
 
-### 测试结构
+### 测试工具
 
-```
-tests/
-├── unit/           # 单元测试
-├── integration/    # 集成测试
-└── fixtures/       # 测试数据
-```
-
-### 运行测试
+项目提供了多种测试工具：
 
 ```bash
-# 运行所有测试
-npm test
+# 1. 交互式测试脚本 (HTTP API 测试)
+node test-script.js "https://v.douyin.com/xxx"
 
-# 运行特定测试
-npm test -- --grep "DouyinService"
+# 2. 命令行工具测试
+node scripts/douyin.js status
+node scripts/douyin-to-text.js "https://v.douyin.com/xxx"
 
-# 生成覆盖率报告
-npm run test:coverage
+# 3. 运行示例代码
+npx ts-node example.ts
 ```
 
-### 测试脚本
+### 单元测试结构
 
-项目提供了完整的测试脚本：
-
-```bash
-# 交互式测试工具
-node test-script.js
-
-# Shell 测试脚本
-./test.sh
+```
+tests/ (建议的测试结构)
+├── unit/               # 单元测试
+│   ├── DouyinService.test.ts
+│   └── utils.test.ts
+├── integration/        # 集成测试
+└── fixtures/          # 测试数据
 ```
 
-**test-script.js** 功能：
-- 🔍 解析抖音链接
-- 📥 下载视频测试
-- 🎵 音频提取测试
-- 🗣️ 语音识别测试
-- 📊 完整流程测试
+### 示例测试代码
 
-### 示例测试
+```typescript
+// tests/unit/DouyinService.test.ts
+import { DouyinService } from '../src';
 
-```javascript
-// tests/unit/douyin-service.test.js
 describe('DouyinService', () => {
-  let service;
+  let service: DouyinService;
   
   beforeEach(() => {
     service = new DouyinService(
-      process.env.SPEECH_API_KEY,
-      process.env.SPEECH_API_BASE_URL,
-      process.env.SPEECH_MODEL
+      'test-api-key',
+      'https://api.example.com',
+      'test-model'
     );
   });
   
@@ -283,7 +326,7 @@ describe('DouyinService', () => {
 });
 ```
 
-## 🏗️ 构建与部署
+## 🏗️ 构建与发布
 
 ### 本地构建
 
@@ -293,53 +336,33 @@ npm run build
 
 # 检查构建产物
 ls dist/
+# index.js, index.d.ts, services/, types/, utils/
 ```
 
-### Docker 部署
+### npm 包发布
 
-```dockerfile
-# Dockerfile
-FROM node:18-alpine
+```bash
+# 1. 更新版本号
+npm version patch  # 或 minor, major
 
-# 安装 FFmpeg
-RUN apk add --no-cache ffmpeg
-
-# 设置工作目录
-WORKDIR /app
-
-# 复制依赖文件
-COPY package*.json ./
-RUN npm ci --only=production
-
-# 复制源码
-COPY . .
-
-# 编译 TypeScript
-RUN npm run build
-
-# 暴露端口
-EXPOSE 3000
-
-# 启动应用
-CMD ["npm", "start"]
+# 2. 构建并发布
+npm publish
 ```
 
-### Docker Compose
+### 包结构
 
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  douyin-api:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - SPEECH_API_KEY=${SPEECH_API_KEY}
-      - NODE_ENV=production
-    volumes:
-      - ./downloads:/app/downloads
-      - ./temp:/app/temp
+发布到 npm 的包结构：
+
+```
+douyin-text-extractor/
+├── dist/                    # 编译后的 JavaScript 代码
+│   ├── index.js            # 主入口
+│   ├── index.d.ts          # TypeScript 类型定义
+│   ├── services/
+│   ├── types/
+│   └── utils/
+├── README.md               # 使用说明
+└── LICENSE                 # 许可证
 ```
 
 ## 📊 性能优化
@@ -389,30 +412,36 @@ const results = await Promise.all(promises);
 ### 添加新的语音识别服务
 
 ```typescript
-// src/services/speech/providers/NewProvider.ts
-export class NewSpeechProvider implements SpeechProvider {
+// 扩展 DouyinService 以支持多种语音识别服务
+interface SpeechProvider {
+  transcribe(audioPath: string): Promise<string>;
+}
+
+class OpenAISpeechProvider implements SpeechProvider {
   async transcribe(audioPath: string): Promise<string> {
-    // 实现新服务的调用逻辑
+    // OpenAI Whisper API 实现
   }
 }
 
-// 注册新服务
-const speechService = new SpeechServiceFactory()
-  .register('new-provider', NewSpeechProvider)
-  .create(config.speechProvider);
+class SiliconFlowProvider implements SpeechProvider {
+  async transcribe(audioPath: string): Promise<string> {
+    // SiliconFlow API 实现
+  }
+}
 ```
 
 ### 添加新的视频平台支持
 
 ```typescript
-// src/services/video/providers/NewPlatform.ts
-export class NewPlatformService implements VideoService {
+// 扩展以支持其他平台
+abstract class VideoService {
+  abstract parseShareUrl(shareText: string): Promise<VideoInfo>;
+  abstract downloadVideo(videoInfo: VideoInfo): Promise<string>;
+}
+
+class TikTokService extends VideoService {
   async parseShareUrl(shareText: string): Promise<VideoInfo> {
-    // 实现新平台的链接解析
-  }
-  
-  async downloadVideo(videoInfo: VideoInfo): Promise<string> {
-    // 实现新平台的视频下载
+    // TikTok 链接解析实现
   }
 }
 ```
@@ -423,86 +452,95 @@ export class NewPlatformService implements VideoService {
 
 ```bash
 export LOG_LEVEL=debug
-npm run dev
+node example.ts
 ```
 
-### 使用调试器
+### 使用 VS Code 调试
 
 ```json
 // .vscode/launch.json
 {
-  "type": "node",
-  "request": "launch",
-  "name": "Debug App",
-  "program": "${workspaceFolder}/dist/index.js",
-  "env": {
-    "NODE_ENV": "development",
-    "LOG_LEVEL": "debug"
-  }
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Example",
+      "program": "${workspaceFolder}/example.ts",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "env": {
+        "LOG_LEVEL": "debug",
+        "SPEECH_API_KEY": "your-api-key"
+      }
+    }
+  ]
 }
 ```
 
 ### 网络请求调试
 
 ```typescript
-// 添加请求拦截器
-axios.interceptors.request.use(config => {
-  console.log('Request:', config.method?.toUpperCase(), config.url);
+// 在 DouyinService 中添加请求拦截器
+import axios, { AxiosInstance } from 'axios';
+
+const axiosInstance: AxiosInstance = axios.create();
+
+axiosInstance.interceptors.request.use(config => {
+  logger.debug('Request:', {
+    method: config.method?.toUpperCase(),
+    url: config.url,
+    headers: config.headers
+  });
   return config;
 });
 
-axios.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   response => {
-    console.log('Response:', response.status, response.statusText);
+    logger.debug('Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url
+    });
     return response;
   },
   error => {
-    console.error('Error:', error.message);
+    logger.error('Request Error:', {
+      message: error.message,
+      status: error.response?.status,
+      url: error.config?.url
+    });
     return Promise.reject(error);
   }
 );
 ```
 
-## 📈 监控与维护
+## 📈 库使用监控
 
-### 健康检查
+作为 npm 库，可以通过以下方式了解使用情况：
 
-```typescript
-// 健康检查端点
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version,
-    uptime: process.uptime()
-  });
-});
-```
-
-### 性能监控
+### 基本使用统计
 
 ```typescript
-// 请求处理时间中间件
-app.use((req, res, next) => {
-  const start = Date.now();
-  
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    logger.info('Request completed', {
-      method: req.method,
-      url: req.url,
-      status: res.statusCode,
-      duration: `${duration}ms`
-    });
-  });
-  
-  next();
-});
+// 在关键方法中添加使用统计
+export class DouyinService {
+  private static usageStats = {
+    parseShareUrl: 0,
+    downloadVideo: 0,
+    extractText: 0
+  };
+
+  async parseShareUrl(shareText: string): Promise<DouyinVideoInfo> {
+    DouyinService.usageStats.parseShareUrl++;
+    logger.info('Method called', { method: 'parseShareUrl', count: DouyinService.usageStats.parseShareUrl });
+    // ... 实现
+  }
+}
 ```
 
 ## 🔗 相关资源
 
-- [快速开始指南](./QUICKSTART.md)
-- [命令行工具文档](./CLI.md)
-- [API 文档](../README.md)
-- [更新日志](../CHANGELOG.md) 
+- [快速开始指南](./QUICKSTART.md) - 基本使用方法
+- [命令行工具文档](./CLI.md) - CLI 工具使用
+- [API 文档](../README.md) - 完整 API 说明
+- [更新日志](../CHANGELOG.md) - 版本更新记录
+- [示例代码](../example.ts) - 完整使用示例 
